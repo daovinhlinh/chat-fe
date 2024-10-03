@@ -2,7 +2,7 @@
 import axios from "axios";
 
 export const request = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: process.env.REACT_APP_WS_SOCKET,
   // httpsAgent: agent,
   headers: {
     "Content-Type": "application/json",
