@@ -46,14 +46,15 @@ export default function Login() {
       const { data } = await axios.post(loginRoute, {
         username,
         password,
+        ip: "1.1.1.1",
       });
-      if (data.status === false) {
+      if (Object.keys(data).length === 0) {
+        console.log("go this");
         toast.error(data.msg, toastOptions);
-      }
-      if (data.status === true) {
+      } else {
         localStorage.setItem(
           process.env.REACT_APP_LOCALHOST_KEY,
-          JSON.stringify(data.user)
+          JSON.stringify(data)
         );
 
         navigate("/");
@@ -67,7 +68,7 @@ export default function Login() {
         <form action="" onSubmit={(event) => handleSubmit(event)}>
           <div className="brand">
             <img src={Logo} alt="logo" />
-            <h1>snappy</h1>
+            <h1>Chat server</h1>
           </div>
           <input
             type="text"
@@ -83,9 +84,9 @@ export default function Login() {
             onChange={(e) => handleChange(e)}
           />
           <button type="submit">Log In</button>
-          <span>
+          {/* <span>
             Don't have an account ? <Link to="/register">Create One.</Link>
-          </span>
+          </span> */}
         </form>
       </FormContainer>
       <ToastContainer />

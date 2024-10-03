@@ -39,8 +39,8 @@ export default function SetAvatar() {
       });
 
       if (data.isSet) {
-        user.isAvatarImageSet = true;
-        user.avatarImage = data.image;
+        // user.isAvatarImageSet = true;
+        // user.avatarImage = data.image;
         localStorage.setItem(
           process.env.REACT_APP_LOCALHOST_KEY,
           JSON.stringify(user)
