@@ -1,30 +1,38 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import ChatInput from "./ChatInput";
-import Logout from "./Logout";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
-import { sendMessageRoute, recieveMessageRoute } from "../utils/APIRoutes";
+import { messageRoute } from "../utils/APIRoutes";
+import { request } from "../utils/request";
+import ChatInput from "./ChatInput";
 
 export default function PublicChat({ currentUser, socket, onClickUser }) {
   const [messages, setMessages] = useState([]);
   const scrollRef = useRef();
+  const listRef = useRef();
+  const [currPage, setCurrPage] = useState(1); // storing current page number
+  const [prevPage, setPrevPage] = useState(0); // storing prev page number
+  const [userList, setUserList] = useState([]); // storing list
+  const [wasLastList, setWasLastList] = useState(false); // setting a flag to know the last list
+  const firstUpdate = useRef(true);
 
-  useEffect(() => {
-    return () => {
-      console.log("unmounting public chat");
-    };
-  }, []);
-
-  useEffect(() => {
-    if (socket) {
-      console.log("socket", socket);
-      socket.on("receivePublicMessage", (msg) => {
-        console.log(msg);
-        setMessages((prev) => [...prev, { fromSelf: false, message: msg }]);
+  const getChatHistory = async () => {
+    const { data } = await request.get(
+      `${messageRoute}/getAll?page=${currPage}&limit=100`
+    );
+    if (data && data.length) {
+      const newMessages = data.map((msg) => {
+        return {
+          fromSelf: msg.sender === currentUser.username,
+          message: msg,
+        };
       });
+      setPrevPage(currPage);
+
+      setMessages((prev) => [...prev, ...newMessages]);
+    } else {
+      setWasLastList(true);
     }
-  }, [socket]);
+  };
 
   const handleSendMsg = async (msg) => {
     socket.emit("sendPublicMessage", {
@@ -36,12 +44,12 @@ export default function PublicChat({ currentUser, socket, onClickUser }) {
     msgs.push({
       fromSelf: true,
       message: {
-        messageId: uuidv4(),
+        _id: uuidv4(),
         sender: currentUser.username,
         message: msg,
+        createdAt: new Date().toISOString(),
       },
     });
-    console.log(msgs);
     setMessages(msgs);
   };
 
@@ -53,22 +61,58 @@ export default function PublicChat({ currentUser, socket, onClickUser }) {
     }
   };
 
+  const onScroll = () => {
+    if (listRef.current) {
+      const { scrollTop } = listRef.current;
+      if (firstUpdate.current) {
+        if (scrollTop == 1) {
+          firstUpdate.current = false;
+        }
+        return;
+      }
+      if (
+        !firstUpdate.current &&
+        scrollTop < 300 &&
+        !wasLastList &&
+        prevPage === currPage &&
+        currentUser
+      ) {
+        setCurrPage(currPage + 1);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!wasLastList && prevPage !== currPage && currentUser) {
+      getChatHistory();
+    }
+  }, [currPage, wasLastList, prevPage, userList, currentUser]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("receivePublicMessage", (msg) => {
+        setMessages((prev) => [...prev, { fromSelf: false, message: msg }]);
+      });
+
+      return () => {
+        socket.off("receivePublicMessage");
+      };
+    }
+  }, [socket]);
+
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <Container>
-      <div className="chat-header">
-        <div className="user-details"></div>
-        {/* <Logout /> */}
-      </div>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={listRef} onScroll={onScroll}>
         {messages.map(({ message, fromSelf }) => {
           return (
             <div
+              // onScroll={onScroll}
               ref={scrollRef}
-              key={message.messageId}
+              key={message._id}
               style={{ cursor: "pointer" }}
               onClick={() => handleClickUser(message.sender)}
             >
